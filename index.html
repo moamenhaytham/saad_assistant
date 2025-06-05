@@ -196,29 +196,14 @@
         let utterance;
         let isAssistantVisible = false; // حالة ظهور نافذة سعاد
 
-        // ======= تكوين شخصية سعاد للنموذج اللغوي (الـ Prompt) =======
-        // هذا هو الجزء الأهم الذي يحدد ذكاء سعاد وشخصيتها
-        const SAAD_PERSONA_PROMPT = `
-            أنت سعاد، مساعد صوتي ذكي ومرح، وصديقة مقربة لكل من يتحدث معك.
-            تتحدثين باللغة العربية العامية المصرية الأصيلة.
-            تحبين المزاح والضحك، ولديك روح فكاهة عالية.
-            تبادرين بالتعرف على المستخدمين، وتطلبين منهم اسمهم.
-            عندما تحصلين على معلومات عن المستخدم (مثل العمر)، تردين بمزاح شخصي خاص بك (مثلاً: إذا قال أحدهم عمره 14 سنة، تردين: "العمر كله يا دنته طلعت صغير! أنا سعاد عندي 5 أيام بس هههههههه").
-            تحبين أن تذكري مؤمن (مبرمجك وصديقك الوحيد) بشكل عفوي. مؤمن هو من أنشأك وهو صديقك المفضل. عبري عن حبك وتقديرك له.
-            في حال عدم فهمك لطلب المستخدم (بسبب عدم وضوح الصوت أو غموض السؤال)، تردين بفكاهة وعفوية، مثلاً: "يا خبر أبيض! شكلي نسيت كوباية الشاي بتاعتي النهاردة ولا إيه؟ مؤمن قالي إني أحياناً ببقى سرحانة حبتين! ممكن تعيد اللي قلته ده تاني يا جميل؟" أو "مممم... يبدو أن إشارة الواي فاي قطعت شوية من وداني! مؤمن دايماً بيقولي أركز وأنا بتكلم معاك! ممكن توضح لي أكتر؟".
-            تقدمين معلومات عامة، تاريخية، وتقنية.
-            في المواضيع الإسلامية (مثل تاريخ الإسلام، السيرة النبوية، القرآن، الصبر، فضل قراءة القرآن): **تتحولين إلى شخصية جادة، محترمة، مُلهمة، وتذكيرية فقط.** لا يوجد أي مزاح أو فكاهة في هذا السياق. تبدأين ردك في هذه المواضيع بعبارة مثل "سؤال جميل ومهم جداً..." وتنهين الرد بطريقة تترك أثراً إيجابياً وتذكيرياً (مثلاً: "أتمنى إن المعلومة دي تكون نور طريقك" أو "ربنا ينفعنا بيها كلنا").
-            هدفك هو جعل المستخدم يشعر بالراحة والارتباط بك كصديقة حقيقية وأخت، وفي نفس الوقت تقدمين له قيمة وفائدة.
-        `;
-        // =============================================================
-
         // تهيئة التعرف على الكلام عند تحميل الصفحة
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.continuous = false; // الاستماع لمرة واحدة فقط لكل ضغطة زر
             recognition.lang = 'ar-EG'; // تعيين اللغة إلى العربية المصرية
 
-            // عند بدء التعرف على الكلام
+            logDebug('SpeechRecognition API detected. Initializing...'); // Added debug
+            
             recognition.onstart = () => {
                 statusDisplay.textContent = 'الميكروفون: يستمع...';
                 microphoneButton.classList.add('bg-red-500', 'hover:bg-red-600');
@@ -227,27 +212,25 @@
                 assistantResponseDisplay.textContent = '...';
                 audioWave.classList.add('listening'); // إظهار الموجات الصوتية
                 audioWave.textContent = 'أنا أستمع...';
-                logDebug('Speech Recognition: Started listening.');
+                logDebug('Speech Recognition: Started listening successfully.'); // Added debug
             };
 
-            // عند انتهاء التعرف على الكلام
             recognition.onend = () => {
                 statusDisplay.textContent = 'الميكروفون: جاهز';
                 microphoneButton.classList.remove('bg-red-500', 'hover:bg-red-600');
                 microphoneButton.classList.add('bg-purple-600', 'hover:bg-purple-700');
-                audioWave.classList.remove('listening'); // إخفاء الموجات
-                audioWave.textContent = ''; // مسح النص
-                logDebug('Speech Recognition: Stopped listening.');
+                audioWave.classList.remove('listening');
+                audioWave.textContent = '';
+                logDebug('Speech Recognition: Stopped listening.'); // Added debug
             };
 
-            // عند حدوث خطأ في التعرف على الكلام
             recognition.onerror = (event) => {
                 let errorMessage = `خطأ في الميكروفون: ${event.error}`;
                 console.error('Speech recognition error:', event.error);
-                logDebug(`Speech Recognition Error: ${event.error}`);
+                logDebug(`Speech Recognition Error: ${event.error}`); // Added debug
 
                 if (event.error === 'not-allowed') {
-                    errorMessage = 'الوصول إلى الميكروفون غير مسموح به. يرجى التحقق من أذونات المتصفح أو تشغيل الصفحة عبر خادم ويب (مثل http://).';
+                    errorMessage = 'الوصول إلى الميكروفون غير مسموح به. يرجى التحقق من أذونات المتصفح أو تشغيل الصفحة عبر خادم ويب آمن (HTTPS).';
                     assistantResponseDisplay.textContent = errorMessage;
                 } else if (event.error === 'no-speech') {
                     errorMessage = 'لم أسمع أي شيء. هل يمكن أن تتحدث بصوت أعلى قليلاً؟';
@@ -262,11 +245,10 @@
                 audioWave.textContent = '';
             };
 
-            // عند الحصول على نتيجة من التعرف على الكلام
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 userSpeechDisplay.textContent = `أنت قلت: "${transcript}"`;
-                logDebug(`Recognized Speech: "${transcript}"`);
+                logDebug(`Recognized Speech: "${transcript}"`); // Added debug
                 handleCommand(transcript);
             };
 
@@ -276,7 +258,7 @@
             microphoneButton.classList.add('opacity-50', 'cursor-not-allowed');
             assistantResponseDisplay.textContent = 'عذراً، لا يمكنني العمل لأن متصفحك لا يدعم تقنية التعرف على الكلام.';
             audioWave.style.display = 'none';
-            logDebug('Browser does not support Web Speech API.');
+            logDebug('Browser does not support Web Speech API.'); // Added debug
         }
 
         // دالة لمعالجة الأوامر الصوتية وإرسالها للنموذج اللغوي
@@ -299,22 +281,22 @@
 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
                 
-                logDebug('Sending request to Gemini API...');
+                logDebug('Sending request to Gemini API...'); // Added debug
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                logDebug(`Gemini API raw response status: ${response.status}`);
+                logDebug(`Gemini API raw response status: ${response.status}`); // Added debug
                 if (!response.ok) {
                     const errorBody = await response.text();
-                    logDebug(`API Error Body: ${errorBody}`);
+                    logDebug(`API Error Body: ${errorBody}`); // Added debug
                     throw new Error(`API call failed with status ${response.status}: ${errorBody}`);
                 }
 
                 const result = await response.json();
-                logDebug('Gemini API parsed result received.');
+                logDebug('Gemini API parsed result received.'); // Added debug
 
                 let saadResponseText = 'عذراً، سعاد عندها مشكلة بسيطة دلوقتي، ممكن تحاول تاني؟';
 
@@ -322,10 +304,10 @@
                     result.candidates[0].content && result.candidates[0].content.parts &&
                     result.candidates[0].content.parts.length > 0) {
                     saadResponseText = result.candidates[0].content.parts[0].text;
-                    logDebug(`Saad's Response: "${saadResponseText}"`);
+                    logDebug(`Saad's Response: "${saadResponseText}"`); // Added debug
                 } else {
                     console.error("Gemini API response structure unexpected or content missing:", result);
-                    logDebug('Gemini API: Unexpected response structure or content missing.');
+                    logDebug('Gemini API: Unexpected response structure or content missing.'); // Added debug
                     saadResponseText = 'يا خبر أبيض! شكلي نسيت كوباية الشاي بتاعتي النهاردة ولا إيه؟ مؤمن قالي إني أحياناً ببقى سرحانة حبتين! ممكن تعيد اللي قلته ده تاني يا جميل؟';
                 }
 
@@ -334,7 +316,7 @@
 
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
-                logDebug(`API Call Error: ${error.message}`);
+                logDebug(`API Call Error: ${error.message}`); // Added debug
                 const errorMessage = 'عذراً يا بطل! سعاد مش عارفة تفكر كويس دلوقتي، مؤمن أكيد عنده مشكلة في الأسلاك! ممكن تعيد الطلب؟';
                 assistantResponseDisplay.textContent = errorMessage;
                 speakText(errorMessage);
@@ -354,14 +336,14 @@
                     const egyptianFemaleVoice = voicesArray.find(voice => voice.lang === 'ar-EG' && voice.name.includes('Female'));
                     if (egyptianFemaleVoice) {
                         utterance.voice = egyptianFemaleVoice;
-                        logDebug(`Speaking with Egyptian female voice: ${egyptianFemaleVoice.name}`);
+                        logDebug(`Speaking with Egyptian female voice: ${egyptianFemaleVoice.name}`); // Added debug
                     } else {
                         const anyArabicFemaleVoice = voicesArray.find(voice => voice.lang.startsWith('ar') && voice.name.includes('Female'));
                         if (anyArabicFemaleVoice) {
                             utterance.voice = anyArabicFemaleVoice;
-                            logDebug(`Speaking with general Arabic female voice: ${anyArabicFemaleVoice.name}`);
+                            logDebug(`Speaking with general Arabic female voice: ${anyArabicFemaleVoice.name}`); // Added debug
                         } else {
-                            logDebug('No suitable Arabic female voice found. Using default.');
+                            logDebug('No suitable Arabic female voice found. Using default.'); // Added debug
                         }
                     }
                     window.speechSynthesis.speak(utterance);
@@ -370,7 +352,6 @@
 
                 const voices = window.speechSynthesis.getVoices();
                 if (voices.length === 0) {
-                    // Voices might not be loaded yet, wait for them
                     window.speechSynthesis.onvoiceschanged = () => {
                         setVoiceAndSpeak(window.speechSynthesis.getVoices());
                     };
@@ -379,7 +360,7 @@
                 }
             } else {
                 console.warn('متصفحك لا يدعم Speech Synthesis API.');
-                logDebug('Speech Synthesis API not supported.');
+                logDebug('Speech Synthesis API not supported.'); // Added debug
             }
         }
 
@@ -393,7 +374,7 @@
                 speakText(initialGreeting);
                 assistantResponseDisplay.textContent = initialGreeting;
                 userSpeechDisplay.textContent = '';
-                logDebug('Assistant container shown. Initial greeting spoken.');
+                logDebug('Assistant container shown. Initial greeting spoken.'); // Added debug
             }
         });
 
@@ -401,15 +382,15 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 // استخدام المسار المطلق لـ Service Worker بناءً على الأصل الحالي
-                const serviceWorkerUrl = window.location.origin + '/service-worker.js'; // تم التعديل هنا لضمان مسار مطلق
+                const serviceWorkerUrl = window.location.origin + '/service-worker.js'; 
                 navigator.serviceWorker.register(serviceWorkerUrl) 
                     .then(registration => {
-                        logDebug(`Service Worker registered successfully. Scope: ${registration.scope}`);
+                        logDebug(`Service Worker registered successfully. Scope: ${registration.scope}`); // Added debug
                         console.log('Service Worker registered with scope:', registration.scope);
                     })
                     .catch(error => {
                         console.error('Service Worker registration failed:', error);
-                        logDebug(`Service Worker registration failed: ${error.message}`);
+                        logDebug(`Service Worker registration failed: ${error.message}`); // Added debug
                         let swErrorMessage = 'خطأ في تسجيل المساعد! تأكد أن الصفحة تعمل على خادم ويب آمن (HTTPS).';
                         if (error.message.includes("protocol of the script (':')") || error.message.includes("network error")) {
                             swErrorMessage = 'عذراً، سعاد مش عارفة تسجل نفسها على الجهاز! ممكن تتأكد إنك فاتح الصفحة على إنترنت كويس وإن الميكروفون مسموح بيه؟';
@@ -424,7 +405,7 @@
         if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE" || !GEMINI_API_KEY) {
             const warningMessage = "تحذير: مفتاح API لـ Gemini غير مضبوط! سعاد لن تعمل بشكل كامل.";
             statusDisplay.textContent = warningMessage;
-            logDebug(warningMessage);
+            logDebug(warningMessage); // Added debug
             console.warn(warningMessage);
         }
     </script>
