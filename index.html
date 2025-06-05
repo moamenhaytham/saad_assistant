@@ -101,9 +101,32 @@
             opacity: 0;
             pointer-events: none; /* لمنع التفاعل معه بعد إخفائه */
         }
+
+        /* لوحة تصحيح الأخطاء */
+        #debugLog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 20%; /* جزء صغير في الأعلى */
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 0.7rem;
+            overflow-y: scroll;
+            padding: 0.5rem;
+            box-sizing: border-box;
+            z-index: 1001; /* أعلى من كل شيء */
+            opacity: 0.8;
+            direction: ltr; /* لضمان ظهور رسائل Debug بالترتيب الصحيح */
+            text-align: left;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-purple-800 to-indigo-900 min-h-screen flex items-center justify-center p-4">
+
+    <!-- لوحة تصحيح الأخطاء -->
+    <div id="debugLog"></div>
 
     <!-- زر تفعيل المساعد (يمثل زر الطاقة أو أي زر تفعيل) -->
     <div id="activateButton" class="relative">
@@ -149,6 +172,15 @@
         const assistantResponseDisplay = document.getElementById('assistant-response');
         const statusDisplay = document.getElementById('status');
         const audioWave = document.getElementById('audioWave'); // شريط الموجات
+        const debugLog = document.getElementById('debugLog'); // لوحة تصحيح الأخطاء
+
+        // دالة لكتابة الرسائل في لوحة تصحيح الأخطاء
+        function logDebug(message) {
+            const p = document.createElement('p');
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugLog.appendChild(p);
+            debugLog.scrollTop = debugLog.scrollHeight; // التمرير للأسفل تلقائياً
+        }
 
         // =========================================================================
         // قم بوضع مفتاح API الخاص بك هنا بين علامتي التنصيص
@@ -195,6 +227,7 @@
                 assistantResponseDisplay.textContent = '...';
                 audioWave.classList.add('listening'); // إظهار الموجات الصوتية
                 audioWave.textContent = 'أنا أستمع...';
+                logDebug('Speech Recognition: Started listening.');
             };
 
             // عند انتهاء التعرف على الكلام
@@ -204,25 +237,27 @@
                 microphoneButton.classList.add('bg-purple-600', 'hover:bg-purple-700');
                 audioWave.classList.remove('listening'); // إخفاء الموجات
                 audioWave.textContent = ''; // مسح النص
+                logDebug('Speech Recognition: Stopped listening.');
             };
 
             // عند حدوث خطأ في التعرف على الكلام
             recognition.onerror = (event) => {
                 let errorMessage = `خطأ في الميكروفون: ${event.error}`;
                 console.error('Speech recognition error:', event.error);
+                logDebug(`Speech Recognition Error: ${event.error}`);
 
                 if (event.error === 'not-allowed') {
                     errorMessage = 'الوصول إلى الميكروفون غير مسموح به. يرجى التحقق من أذونات المتصفح أو تشغيل الصفحة عبر خادم ويب (مثل http://).';
-                    assistantResponseDisplay.textContent = errorMessage; // هنا سعاد ترد مباشرة
+                    assistantResponseDisplay.textContent = errorMessage;
                 } else if (event.error === 'no-speech') {
                     errorMessage = 'لم أسمع أي شيء. هل يمكن أن تتحدث بصوت أعلى قليلاً؟';
-                    assistantResponseDisplay.textContent = errorMessage; // هنا سعاد ترد مباشرة
+                    assistantResponseDisplay.textContent = errorMessage;
                 } else {
                     assistantResponseDisplay.textContent = `عذراً، حدث خطأ: ${event.error}. ممكن تعيد الطلب؟`;
                 }
 
                 statusDisplay.textContent = errorMessage;
-                speakText(assistantResponseDisplay.textContent); // نطق رسالة الخطأ
+                speakText(assistantResponseDisplay.textContent);
                 audioWave.classList.remove('listening');
                 audioWave.textContent = '';
             };
@@ -231,7 +266,8 @@
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 userSpeechDisplay.textContent = `أنت قلت: "${transcript}"`;
-                handleCommand(transcript); // معالجة الأمر المحول إلى نص
+                logDebug(`Recognized Speech: "${transcript}"`);
+                handleCommand(transcript);
             };
 
         } else {
@@ -240,111 +276,110 @@
             microphoneButton.classList.add('opacity-50', 'cursor-not-allowed');
             assistantResponseDisplay.textContent = 'عذراً، لا يمكنني العمل لأن متصفحك لا يدعم تقنية التعرف على الكلام.';
             audioWave.style.display = 'none';
+            logDebug('Browser does not support Web Speech API.');
         }
 
         // دالة لمعالجة الأوامر الصوتية وإرسالها للنموذج اللغوي
         async function handleCommand(command) {
-            assistantResponseDisplay.textContent = 'سعاد بتفكر...'; // رسالة انتظار
-            speakText('سعاد بتفكر...'); // نطق رسالة انتظار
-            microphoneButton.disabled = true; // تعطيل الزر أثناء التفكير
+            assistantResponseDisplay.textContent = 'سعاد بتفكر...';
+            speakText('سعاد بتفكر...');
+            microphoneButton.disabled = true;
 
             try {
-                // هنا يتم استدعاء النموذج اللغوي (عقل سعاد)
                 let chatHistory = [];
                 chatHistory.push({ role: "user", parts: [{ text: SAAD_PERSONA_PROMPT + "\n\nالآن، سؤال المستخدم هو: " + command }] });
 
                 const payload = {
                     contents: chatHistory,
                     generationConfig: {
-                        temperature: 0.8, // درجة الحرارة (الابتكار في الردود)
-                        maxOutputTokens: 200, // أقصى عدد للكلمات في الرد
+                        temperature: 0.8,
+                        maxOutputTokens: 200,
                     },
                 };
 
-                // استخدم مفتاح API الخاص بك هنا
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
                 
-                console.log('Sending request to Gemini API with payload:', payload); // Debugging
+                logDebug('Sending request to Gemini API...');
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                console.log('Gemini API raw response status:', response.status); // Debugging
+                logDebug(`Gemini API raw response status: ${response.status}`);
                 if (!response.ok) {
                     const errorBody = await response.text();
+                    logDebug(`API Error Body: ${errorBody}`);
                     throw new Error(`API call failed with status ${response.status}: ${errorBody}`);
                 }
 
-                const result = await response.json(); // انتظار الرد وتحويله إلى JSON
-                console.log('Gemini API parsed result:', result); // Debugging
+                const result = await response.json();
+                logDebug('Gemini API parsed result received.');
 
-                let saadResponseText = 'عذراً، سعاد عندها مشكلة بسيطة دلوقتي، ممكن تحاول تاني؟'; // رد افتراضي للخطأ
+                let saadResponseText = 'عذراً، سعاد عندها مشكلة بسيطة دلوقتي، ممكن تحاول تاني؟';
 
                 if (result.candidates && result.candidates.length > 0 &&
                     result.candidates[0].content && result.candidates[0].content.parts &&
                     result.candidates[0].content.parts.length > 0) {
                     saadResponseText = result.candidates[0].content.parts[0].text;
+                    logDebug(`Saad's Response: "${saadResponseText}"`);
                 } else {
                     console.error("Gemini API response structure unexpected or content missing:", result);
-                    // هنا يمكن لسعاد أن ترد بأسلوبها الفكاهي عن الخطأ في الفهم
+                    logDebug('Gemini API: Unexpected response structure or content missing.');
                     saadResponseText = 'يا خبر أبيض! شكلي نسيت كوباية الشاي بتاعتي النهاردة ولا إيه؟ مؤمن قالي إني أحياناً ببقى سرحانة حبتين! ممكن تعيد اللي قلته ده تاني يا جميل؟';
                 }
 
                 assistantResponseDisplay.textContent = saadResponseText;
-                speakText(saadResponseText); // نطق استجابة سعاد
+                speakText(saadResponseText);
 
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
-                // هنا يمكن لسعاد أن ترد بأسلوبها الفكاهي عن مشكلة فنية
+                logDebug(`API Call Error: ${error.message}`);
                 const errorMessage = 'عذراً يا بطل! سعاد مش عارفة تفكر كويس دلوقتي، مؤمن أكيد عنده مشكلة في الأسلاك! ممكن تعيد الطلب؟';
                 assistantResponseDisplay.textContent = errorMessage;
                 speakText(errorMessage);
             } finally {
-                microphoneButton.disabled = false; // إعادة تفعيل الزر بعد الانتهاء
+                microphoneButton.disabled = false;
             }
         }
 
         // دالة لنطق النص
         function speakText(text) {
             if (SpeechSynthesisUtterance) {
-                // إيقاف أي نطق سابق لتجنب التداخل
                 window.speechSynthesis.cancel(); 
                 utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'ar-EG'; // تعيين اللغة إلى العربية المصرية
+                utterance.lang = 'ar-EG'; 
                 
-                // البحث عن صوت أنثوي مصري إن وجد
-                const voices = window.speechSynthesis.getVoices();
-                // Check for voices after they are loaded
-                if (voices.length === 0) {
-                    window.speechSynthesis.onvoiceschanged = () => {
-                        const newVoices = window.speechSynthesis.getVoices();
-                        const egyptianFemaleVoice = newVoices.find(voice => voice.lang === 'ar-EG' && voice.name.includes('Female'));
-                        if (egyptianFemaleVoice) {
-                            utterance.voice = egyptianFemaleVoice;
-                        } else {
-                            const anyArabicFemaleVoice = newVoices.find(voice => voice.lang.startsWith('ar') && voice.name.includes('Female'));
-                            if (anyArabicFemaleVoice) {
-                                utterance.voice = anyArabicFemaleVoice;
-                            }
-                        }
-                        window.speechSynthesis.speak(utterance);
-                    };
-                } else {
-                    const egyptianFemaleVoice = voices.find(voice => voice.lang === 'ar-EG' && voice.name.includes('Female'));
+                const setVoiceAndSpeak = (voicesArray) => {
+                    const egyptianFemaleVoice = voicesArray.find(voice => voice.lang === 'ar-EG' && voice.name.includes('Female'));
                     if (egyptianFemaleVoice) {
                         utterance.voice = egyptianFemaleVoice;
+                        logDebug(`Speaking with Egyptian female voice: ${egyptianFemaleVoice.name}`);
                     } else {
-                        const anyArabicFemaleVoice = voices.find(voice => voice.lang.startsWith('ar') && voice.name.includes('Female'));
+                        const anyArabicFemaleVoice = voicesArray.find(voice => voice.lang.startsWith('ar') && voice.name.includes('Female'));
                         if (anyArabicFemaleVoice) {
                             utterance.voice = anyArabicFemaleVoice;
+                            logDebug(`Speaking with general Arabic female voice: ${anyArabicFemaleVoice.name}`);
+                        } else {
+                            logDebug('No suitable Arabic female voice found. Using default.');
                         }
                     }
                     window.speechSynthesis.speak(utterance);
+                    logDebug(`Speaking: "${text.substring(0, 50)}..."`); // Log first 50 chars of speech
+                };
+
+                const voices = window.speechSynthesis.getVoices();
+                if (voices.length === 0) {
+                    // Voices might not be loaded yet, wait for them
+                    window.speechSynthesis.onvoiceschanged = () => {
+                        setVoiceAndSpeak(window.speechSynthesis.getVoices());
+                    };
+                } else {
+                    setVoiceAndSpeak(voices);
                 }
             } else {
                 console.warn('متصفحك لا يدعم Speech Synthesis API.');
+                logDebug('Speech Synthesis API not supported.');
             }
         }
 
@@ -352,38 +387,45 @@
         activateButton.addEventListener('click', () => {
             if (!isAssistantVisible) {
                 assistantContainer.classList.add('show');
-                activateButton.classList.add('hidden'); // إخفاء زر التفعيل
+                activateButton.classList.add('hidden');
                 isAssistantVisible = true;
-                // النطق الأول بعد ظهور النافذة
-                speakText('أهلاً بك! سعاد في خدمتك، كيف يومك اليوم؟');
-                assistantResponseDisplay.textContent = 'أهلاً بك! سعاد في خدمتك، كيف يومك اليوم؟';
-                userSpeechDisplay.textContent = ''; // مسح أي نص قديم للمستخدم
+                const initialGreeting = 'أهلاً بك! سعاد في خدمتك، كيف يومك اليوم؟';
+                speakText(initialGreeting);
+                assistantResponseDisplay.textContent = initialGreeting;
+                userSpeechDisplay.textContent = '';
+                logDebug('Assistant container shown. Initial greeting spoken.');
             }
         });
-
-        // النطق الأول عند تحميل الصفحة
-        window.onload = () => {
-            // for voice recognition to load available voices, it needs to be called after voices are loaded.
-            // Initial greeting is now triggered when assistant container shows
-        };
 
         // تسجيل Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js') // تم التعديل هنا: استخدام المسار النسبي المباشر
+                // استخدام المسار المطلق لـ Service Worker بناءً على الأصل الحالي
+                const serviceWorkerUrl = window.location.origin + '/service-worker.js'; // تم التعديل هنا لضمان مسار مطلق
+                navigator.serviceWorker.register(serviceWorkerUrl) 
                     .then(registration => {
+                        logDebug(`Service Worker registered successfully. Scope: ${registration.scope}`);
                         console.log('Service Worker registered with scope:', registration.scope);
                     })
                     .catch(error => {
                         console.error('Service Worker registration failed:', error);
+                        logDebug(`Service Worker registration failed: ${error.message}`);
                         let swErrorMessage = 'خطأ في تسجيل المساعد! تأكد أن الصفحة تعمل على خادم ويب آمن (HTTPS).';
                         if (error.message.includes("protocol of the script (':')") || error.message.includes("network error")) {
                             swErrorMessage = 'عذراً، سعاد مش عارفة تسجل نفسها على الجهاز! ممكن تتأكد إنك فاتح الصفحة على إنترنت كويس وإن الميكروفون مسموح بيه؟';
                         }
                         statusDisplay.textContent = swErrorMessage;
-                        speakText(swErrorMessage); // سعاد تخبر المستخدم بالخطأ
+                        speakText(swErrorMessage);
                     });
             });
+        }
+
+        // تحذير إذا لم يتم إعداد مفتاح API
+        if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE" || !GEMINI_API_KEY) {
+            const warningMessage = "تحذير: مفتاح API لـ Gemini غير مضبوط! سعاد لن تعمل بشكل كامل.";
+            statusDisplay.textContent = warningMessage;
+            logDebug(warningMessage);
+            console.warn(warningMessage);
         }
     </script>
 </body>
