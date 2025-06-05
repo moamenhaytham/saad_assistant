@@ -202,7 +202,7 @@
             recognition.continuous = false; // الاستماع لمرة واحدة فقط لكل ضغطة زر
             recognition.lang = 'ar-EG'; // تعيين اللغة إلى العربية المصرية
 
-            logDebug('SpeechRecognition API detected. Initializing...'); // Added debug
+            logDebug('SpeechRecognition API detected. Initializing...');
             
             recognition.onstart = () => {
                 statusDisplay.textContent = 'الميكروفون: يستمع...';
@@ -210,9 +210,9 @@
                 microphoneButton.classList.remove('bg-purple-600', 'hover:bg-purple-700');
                 userSpeechDisplay.textContent = 'أنا أستمع...';
                 assistantResponseDisplay.textContent = '...';
-                audioWave.classList.add('listening'); // إظهار الموجات الصوتية
+                audioWave.classList.add('listening');
                 audioWave.textContent = 'أنا أستمع...';
-                logDebug('Speech Recognition: Started listening successfully.'); // Added debug
+                logDebug('Speech Recognition: Started listening successfully.');
             };
 
             recognition.onend = () => {
@@ -221,13 +221,13 @@
                 microphoneButton.classList.add('bg-purple-600', 'hover:bg-purple-700');
                 audioWave.classList.remove('listening');
                 audioWave.textContent = '';
-                logDebug('Speech Recognition: Stopped listening.'); // Added debug
+                logDebug('Speech Recognition: Stopped listening.');
             };
 
             recognition.onerror = (event) => {
                 let errorMessage = `خطأ في الميكروفون: ${event.error}`;
                 console.error('Speech recognition error:', event.error);
-                logDebug(`Speech Recognition Error: ${event.error}`); // Added debug
+                logDebug(`Speech Recognition Error: ${event.error}`);
 
                 if (event.error === 'not-allowed') {
                     errorMessage = 'الوصول إلى الميكروفون غير مسموح به. يرجى التحقق من أذونات المتصفح أو تشغيل الصفحة عبر خادم ويب آمن (HTTPS).';
@@ -248,7 +248,7 @@
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 userSpeechDisplay.textContent = `أنت قلت: "${transcript}"`;
-                logDebug(`Recognized Speech: "${transcript}"`); // Added debug
+                logDebug(`Recognized Speech: "${transcript}"`);
                 handleCommand(transcript);
             };
 
@@ -258,7 +258,7 @@
             microphoneButton.classList.add('opacity-50', 'cursor-not-allowed');
             assistantResponseDisplay.textContent = 'عذراً، لا يمكنني العمل لأن متصفحك لا يدعم تقنية التعرف على الكلام.';
             audioWave.style.display = 'none';
-            logDebug('Browser does not support Web Speech API.'); // Added debug
+            logDebug('Browser does not support Web Speech API.');
         }
 
         // دالة لمعالجة الأوامر الصوتية وإرسالها للنموذج اللغوي
@@ -281,22 +281,22 @@
 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
                 
-                logDebug('Sending request to Gemini API...'); // Added debug
+                logDebug('Sending request to Gemini API...');
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                logDebug(`Gemini API raw response status: ${response.status}`); // Added debug
+                logDebug(`Gemini API raw response status: ${response.status}`);
                 if (!response.ok) {
                     const errorBody = await response.text();
-                    logDebug(`API Error Body: ${errorBody}`); // Added debug
+                    logDebug(`API Error Body: ${errorBody}`);
                     throw new Error(`API call failed with status ${response.status}: ${errorBody}`);
                 }
 
                 const result = await response.json();
-                logDebug('Gemini API parsed result received.'); // Added debug
+                logDebug('Gemini API parsed result received.');
 
                 let saadResponseText = 'عذراً، سعاد عندها مشكلة بسيطة دلوقتي، ممكن تحاول تاني؟';
 
@@ -304,10 +304,10 @@
                     result.candidates[0].content && result.candidates[0].content.parts &&
                     result.candidates[0].content.parts.length > 0) {
                     saadResponseText = result.candidates[0].content.parts[0].text;
-                    logDebug(`Saad's Response: "${saadResponseText}"`); // Added debug
+                    logDebug(`Saad's Response: "${saadResponseText}"`);
                 } else {
                     console.error("Gemini API response structure unexpected or content missing:", result);
-                    logDebug('Gemini API: Unexpected response structure or content missing.'); // Added debug
+                    logDebug('Gemini API: Unexpected response structure or content missing.');
                     saadResponseText = 'يا خبر أبيض! شكلي نسيت كوباية الشاي بتاعتي النهاردة ولا إيه؟ مؤمن قالي إني أحياناً ببقى سرحانة حبتين! ممكن تعيد اللي قلته ده تاني يا جميل؟';
                 }
 
@@ -316,7 +316,7 @@
 
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
-                logDebug(`API Call Error: ${error.message}`); // Added debug
+                logDebug(`API Call Error: ${error.message}`);
                 const errorMessage = 'عذراً يا بطل! سعاد مش عارفة تفكر كويس دلوقتي، مؤمن أكيد عنده مشكلة في الأسلاك! ممكن تعيد الطلب؟';
                 assistantResponseDisplay.textContent = errorMessage;
                 speakText(errorMessage);
@@ -336,18 +336,18 @@
                     const egyptianFemaleVoice = voicesArray.find(voice => voice.lang === 'ar-EG' && voice.name.includes('Female'));
                     if (egyptianFemaleVoice) {
                         utterance.voice = egyptianFemaleVoice;
-                        logDebug(`Speaking with Egyptian female voice: ${egyptianFemaleVoice.name}`); // Added debug
+                        logDebug(`Speaking with Egyptian female voice: ${egyptianFemaleVoice.name}`);
                     } else {
                         const anyArabicFemaleVoice = voicesArray.find(voice => voice.lang.startsWith('ar') && voice.name.includes('Female'));
                         if (anyArabicFemaleVoice) {
                             utterance.voice = anyArabicFemaleVoice;
-                            logDebug(`Speaking with general Arabic female voice: ${anyArabicFemaleVoice.name}`); // Added debug
+                            logDebug(`Speaking with general Arabic female voice: ${anyArabicFemaleVoice.name}`);
                         } else {
-                            logDebug('No suitable Arabic female voice found. Using default.'); // Added debug
+                            logDebug('No suitable Arabic female voice found. Using default.');
                         }
                     }
                     window.speechSynthesis.speak(utterance);
-                    logDebug(`Speaking: "${text.substring(0, 50)}..."`); // Log first 50 chars of speech
+                    logDebug(`Speaking: "${text.substring(0, 50)}..."`);
                 };
 
                 const voices = window.speechSynthesis.getVoices();
@@ -360,7 +360,7 @@
                 }
             } else {
                 console.warn('متصفحك لا يدعم Speech Synthesis API.');
-                logDebug('Speech Synthesis API not supported.'); // Added debug
+                logDebug('Speech Synthesis API not supported.');
             }
         }
 
@@ -374,7 +374,7 @@
                 speakText(initialGreeting);
                 assistantResponseDisplay.textContent = initialGreeting;
                 userSpeechDisplay.textContent = '';
-                logDebug('Assistant container shown. Initial greeting spoken.'); // Added debug
+                logDebug('Assistant container shown. Initial greeting spoken.');
             }
         });
 
@@ -385,12 +385,12 @@
                 const serviceWorkerUrl = window.location.origin + '/service-worker.js'; 
                 navigator.serviceWorker.register(serviceWorkerUrl) 
                     .then(registration => {
-                        logDebug(`Service Worker registered successfully. Scope: ${registration.scope}`); // Added debug
+                        logDebug(`Service Worker registered successfully. Scope: ${registration.scope}`);
                         console.log('Service Worker registered with scope:', registration.scope);
                     })
                     .catch(error => {
                         console.error('Service Worker registration failed:', error);
-                        logDebug(`Service Worker registration failed: ${error.message}`); // Added debug
+                        logDebug(`Service Worker registration failed: ${error.message}`);
                         let swErrorMessage = 'خطأ في تسجيل المساعد! تأكد أن الصفحة تعمل على خادم ويب آمن (HTTPS).';
                         if (error.message.includes("protocol of the script (':')") || error.message.includes("network error")) {
                             swErrorMessage = 'عذراً، سعاد مش عارفة تسجل نفسها على الجهاز! ممكن تتأكد إنك فاتح الصفحة على إنترنت كويس وإن الميكروفون مسموح بيه؟';
@@ -405,9 +405,58 @@
         if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE" || !GEMINI_API_KEY) {
             const warningMessage = "تحذير: مفتاح API لـ Gemini غير مضبوط! سعاد لن تعمل بشكل كامل.";
             statusDisplay.textContent = warningMessage;
-            logDebug(warningMessage); // Added debug
+            logDebug(warningMessage);
             console.warn(warningMessage);
         }
     </script>
 </body>
 </html>
+```
+
+---
+
+أهلاً بك يا أخي! شكرًا جزيلاً على هذه التفاصيل الدقيقة من لوحة `debugLog`. أنت محق تمامًا في طلبك أن نحدد المشكلة ونكتشف الحل بناءً على الأخطاء التي تظهر.
+
+دعنا نمر على الرسائل التي أرسلتها:
+
+* **`[12:45:14 ص] SpeechRecognition API detected. Initializing...`**: ممتاز، هذا يؤكد أن واجهة التعرف على الصوت (SpeechRecognition) موجودة ومتصفحك يدعمها.
+* **`[12:45:14 ص] Service Worker registered successfully. Scope: https://saad-assistant.pages.dev/`**: **هذا خبر رائع!** يعني أن الـ Service Worker تم تسجيله بنجاح على Cloudflare Pages، وبالتالي فإن PWA الخاص بك يعمل بشكل صحيح.
+* **`[12:45:15 ص] Assistant container shown. Initial greeting spoken.`** و **`[12:45:15 ص] Speaking: "أهلاً بك! سعاد في خدمتك، كيف يومك اليوم؟..."`**: هذا يؤكد أن واجهة سعاد تظهر وأنها قادرة على النطق بنجاح. التحذير عن عدم وجود صوت مصري محدد أمر ثانوي ولا يمنع النطق.
+
+**المشكلة الحقيقية المتبقية: سعاد لا تستمع أو لا تتصل بالذكاء الاصطناعي.**
+
+الرسائل تتوقف بعد الترحيب الأولي. **لم يظهر في سجل `debugLog` أي رسالة مثل:**
+* **`Speech Recognition: Started listening successfully.`** (التي يجب أن تظهر عند الضغط على زر الميكروفون)
+* **`Recognized Speech: "كلامك هنا"`** (عند تحدثك)
+* `Sending request to Gemini API...`
+
+هذا يعني أن المشكلة تكمن في **مرحلة بدء التعرف على الصوت (Speech Recognition) نفسها، أو في أذونات الميكروفون**. عندما تضغط على زر "تحدث"، لا يبدأ الميكروفون بالاستماع.
+
+---
+
+### الحلول: فلنجعل سعاد تسمع!
+
+هذه هي الخطوات التي يجب أن نركز عليها لجعل سعاد تسمعك:
+
+1.  **أذونات الميكروفون (الأكثر شيوعاً والأهم):**
+    * **المشكلة:** حتى لو تم فتح الموقع على HTTPS، فإن المتصفح على هاتفك يجب أن يُطلب منه السماح بالوصول إلى الميكروفون. إذا تم رفض هذا الإذن (حتى لو عن طريق الخطأ أو سابقاً)، فلن تتمكن سعاد من الاستماع.
+    * **الحل:**
+        * **افتح رابط سعاد على هاتفك (رابط Cloudflare Pages).**
+        * **ابحث عن أيقونة صغيرة للميكروفون في شريط عنوان المتصفح** (غالباً في أعلى الشاشة). قد تكون عليها علامة حظر أو خط أحمر، أو تكون أيقونة كاميرا وميكروفون.
+        * **اضغط على هذه الأيقونة أو اذهب إلى "إعدادات الموقع" (Site Settings / Permissions) في متصفحك** (من قائمة المتصفح، غالبًا الثلاث نقاط الرأسية أو القائمة السفلية).
+        * **تأكد من أن "الميكروفون" مسموح به (Allowed) لهذا الموقع بالتحديد.** إذا كان محظورًا، قم بتغييره إلى "سماح" (Allow).
+        * بعد تغيير الأذونات، **أعد تحميل الصفحة** (Refresh) وحاول مجدداً.
+
+2.  **جودة الصوت والبيئة المحيطة:**
+    * **المشكلة:** قد يكون الميكروفون مسموحًا، لكن المتصفح لا يكتشف أي صوت واضح بسبب الضوضاء، أو جودة الميكروفون، أو ضعف الصوت.
+    * **الحل:**
+        * تأكد أنك تتحدث **بوضوح وبصوت معتدل** مباشرة في الميكروفون بعد الضغط على زر "تحدث".
+        * جرب التحدث في **بيئة هادئة** قدر الإمكان لتجنب الضوضاء.
+        * راقب **شريط الموجات الصوتية** في واجهة سعاد. هل يتغير شكله أو لونه عندما تتحدث بعد الضغط على الزر؟ إذا لم يتغير، فهذا يؤكد أن الميكروفون لا يستقبل الصوت.
+
+3.  **جرب متصفحاً آخر (للتأكد):**
+    * إذا كنت تستخدم متصفح كروم، جرب متصفح فايرفوكس أو إيدج على هاتفك (أو سفاري إذا كنت على iOS) للتأكد من أن المشكلة ليست خاصة بالمتصفح الذي تستخدمه.
+
+---
+
+**الرجاء تنفيذ هذه الخطوات، وخاصة التأكد من أذونات الميكروفون، ثم أخبرني بالنتيجة وما يظهر في لوحة `debugLog` بعد محاولة التحدث.** هذا هو المفتاح لتشخيص المشكلة بدقة وحلها نهائي
