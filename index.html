@@ -150,6 +150,12 @@
         const statusDisplay = document.getElementById('status');
         const audioWave = document.getElementById('audioWave'); // شريط الموجات
 
+        // =========================================================================
+        // قم بوضع مفتاح API الخاص بك هنا بين علامتي التنصيص
+        // IMPORTANT: استبدل "YOUR_GEMINI_API_KEY_HERE" بمفتاح API الخاص بك من Google AI Studio
+        const GEMINI_API_KEY = "AIzaSyDrVsq5P6ndL9cDJSSWik-HOcL6X6zyVNU"; 
+        // =========================================================================
+
         // تحقق مما إذا كان متصفح المستخدم يدعم Web Speech API
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance;
@@ -207,8 +213,7 @@
 
                 if (event.error === 'not-allowed') {
                     errorMessage = 'الوصول إلى الميكروفون غير مسموح به. يرجى التحقق من أذونات المتصفح أو تشغيل الصفحة عبر خادم ويب (مثل http://).';
-                    // يمكن لسعاد أن ترد هنا بأسلوبها الفكاهي عن الخطأ
-                    assistantResponseDisplay.textContent = errorMessage;
+                    assistantResponseDisplay.textContent = errorMessage; // هنا سعاد ترد مباشرة
                 } else if (event.error === 'no-speech') {
                     errorMessage = 'لم أسمع أي شيء. هل يمكن أن تتحدث بصوت أعلى قليلاً؟';
                     assistantResponseDisplay.textContent = errorMessage; // هنا سعاد ترد مباشرة
@@ -246,11 +251,8 @@
             try {
                 // هنا يتم استدعاء النموذج اللغوي (عقل سعاد)
                 let chatHistory = [];
-                // إضافة persona سعاد كتعليمات للنظام أو كرسالة أولية من المستخدم (لأن بعض النماذج تتفاعل بشكل أفضل مع التعليمات في سياق المحادثة)
-                // سنضع Persona في رسالة المستخدم مع أول طلب لضمان استيعابها بشكل كامل
                 chatHistory.push({ role: "user", parts: [{ text: SAAD_PERSONA_PROMPT + "\n\nالآن، سؤال المستخدم هو: " + command }] });
 
-                // إعداد Payload لطلب API
                 const payload = {
                     contents: chatHistory,
                     generationConfig: {
@@ -259,17 +261,24 @@
                     },
                 };
 
-                // استدعاء Gemini API (API Key فارغ للسماح لـ Canvas بتوفيره)
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
+                // استخدم مفتاح API الخاص بك هنا
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+                
+                console.log('Sending request to Gemini API with payload:', payload); // Debugging
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
+                console.log('Gemini API raw response status:', response.status); // Debugging
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    throw new Error(`API call failed with status ${response.status}: ${errorBody}`);
+                }
+
                 const result = await response.json(); // انتظار الرد وتحويله إلى JSON
+                console.log('Gemini API parsed result:', result); // Debugging
 
                 let saadResponseText = 'عذراً، سعاد عندها مشكلة بسيطة دلوقتي، ممكن تحاول تاني؟'; // رد افتراضي للخطأ
 
@@ -307,18 +316,33 @@
                 
                 // البحث عن صوت أنثوي مصري إن وجد
                 const voices = window.speechSynthesis.getVoices();
-                const egyptianFemaleVoice = voices.find(voice => voice.lang === 'ar-EG' && voice.name.includes('Female'));
-                if (egyptianFemaleVoice) {
-                    utterance.voice = egyptianFemaleVoice;
+                // Check for voices after they are loaded
+                if (voices.length === 0) {
+                    window.speechSynthesis.onvoiceschanged = () => {
+                        const newVoices = window.speechSynthesis.getVoices();
+                        const egyptianFemaleVoice = newVoices.find(voice => voice.lang === 'ar-EG' && voice.name.includes('Female'));
+                        if (egyptianFemaleVoice) {
+                            utterance.voice = egyptianFemaleVoice;
+                        } else {
+                            const anyArabicFemaleVoice = newVoices.find(voice => voice.lang.startsWith('ar') && voice.name.includes('Female'));
+                            if (anyArabicFemaleVoice) {
+                                utterance.voice = anyArabicFemaleVoice;
+                            }
+                        }
+                        window.speechSynthesis.speak(utterance);
+                    };
                 } else {
-                    //Fallback to any Arabic female voice or default
-                    const anyArabicFemaleVoice = voices.find(voice => voice.lang.startsWith('ar') && voice.name.includes('Female'));
-                    if (anyArabicFemaleVoice) {
-                        utterance.voice = anyArabicFemaleVoice;
+                    const egyptianFemaleVoice = voices.find(voice => voice.lang === 'ar-EG' && voice.name.includes('Female'));
+                    if (egyptianFemaleVoice) {
+                        utterance.voice = egyptianFemaleVoice;
+                    } else {
+                        const anyArabicFemaleVoice = voices.find(voice => voice.lang.startsWith('ar') && voice.name.includes('Female'));
+                        if (anyArabicFemaleVoice) {
+                            utterance.voice = anyArabicFemaleVoice;
+                        }
                     }
+                    window.speechSynthesis.speak(utterance);
                 }
-
-                window.speechSynthesis.speak(utterance);
             } else {
                 console.warn('متصفحك لا يدعم Speech Synthesis API.');
             }
@@ -339,24 +363,25 @@
 
         // النطق الأول عند تحميل الصفحة
         window.onload = () => {
-            // يمكن تأخير النطق الأولي هنا إذا أردت أن تبدأ سعاد بالحديث بعد ظهور النافذة فقط
             // for voice recognition to load available voices, it needs to be called after voices are loaded.
-            window.speechSynthesis.onvoiceschanged = () => {
-                if (!isAssistantVisible) { // only speak if assistant is not yet visible
-                    speakText('اضغط على الدائرة في منتصف الشاشة لتشغيل سعاد.');
-                }
-            };
+            // Initial greeting is now triggered when assistant container shows
         };
 
         // تسجيل Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
+                navigator.serviceWorker.register('/service-worker.js') // تم التعديل هنا: استخدام المسار النسبي المباشر
                     .then(registration => {
                         console.log('Service Worker registered with scope:', registration.scope);
                     })
                     .catch(error => {
                         console.error('Service Worker registration failed:', error);
+                        let swErrorMessage = 'خطأ في تسجيل المساعد! تأكد أن الصفحة تعمل على خادم ويب آمن (HTTPS).';
+                        if (error.message.includes("protocol of the script (':')") || error.message.includes("network error")) {
+                            swErrorMessage = 'عذراً، سعاد مش عارفة تسجل نفسها على الجهاز! ممكن تتأكد إنك فاتح الصفحة على إنترنت كويس وإن الميكروفون مسموح بيه؟';
+                        }
+                        statusDisplay.textContent = swErrorMessage;
+                        speakText(swErrorMessage); // سعاد تخبر المستخدم بالخطأ
                     });
             });
         }
