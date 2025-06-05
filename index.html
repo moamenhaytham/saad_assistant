@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مساعد سعاد الصوتي</title>
+    <!-- تضمين مكتبة Tailwind CSS لتصميم جميل ومتجاوب -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- تحديد لون شريط العنوان للمتصفح على الجوال (PWA) -->
+    <meta name="theme-color" content="#6B46C1">
+    <!-- ربط ملف المانيڤست (manifest.json) الخاص بـ PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        /* تعريف الخط الافتراضي Inter */
+        body {
+            font-family: 'Inter', sans-serif;
+            direction: rtl; /* لجعل النص يبدأ من اليمين ليتناسب مع اللغة العربية */
+            text-align: right; /* محاذاة النص لليمين */
+            overflow: hidden; /* منع التمرير لأسفل لنتحكم في ظهور النافذة */
+        }
+
+        /* حاوية النافذة المنبثقة من الأسفل */
+        #assistantContainer {
+            position: fixed;
+            bottom: -100%; /* تبدأ مخفية أسفل الشاشة */
+            left: 0;
+            width: 100%;
+            height: 50%; /* نصف الشاشة كما طلبت */
+            background: linear-gradient(to top, #fff 80%, #f0f0f0 100%); /* خلفية متدرجة للنافذة */
+            border-top-left-radius: 2rem; /* زوايا دائرية علوية */
+            border-top-right-radius: 2rem;
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3); /* ظل للنافذة */
+            transition: bottom 0.5s ease-out; /* حركة سلسة للظهور والاختفاء */
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            box-sizing: border-box;
+            z-index: 1000;
+        }
+
+        #assistantContainer.show {
+            bottom: 0; /* تظهر في أسفل الشاشة */
+        }
+
+        /* شريط الموجات الصوتية (لتشابه سيري) */
+        #audioWave {
+            width: 80%;
+            height: 30px;
+            background: linear-gradient(to right, #a78bfa, #8b5cf6, #c084fc); /* ألوان بنفسجية متدرجة */
+            border-radius: 15px;
+            margin: 0 auto 1rem auto;
+            opacity: 0; /* مخفي في البداية */
+            transform: scaleX(0.8);
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: white;
+            animation: pulseWave 1.5s infinite ease-in-out alternate; /* تأثير النبض */
+        }
+
+        #audioWave.listening {
+            opacity: 1;
+            transform: scaleX(1);
+        }
+
+        @keyframes pulseWave {
+            0% { transform: scaleX(0.8); opacity: 0.7; }
+            100% { transform: scaleX(1); opacity: 1; }
+        }
+
+        /* زر تفعيل المساعد (يمكن أن يكون زر الطاقة على الهاتف) */
+        #activateButton {
+            position: fixed;
+            top: 50%; /* في منتصف الشاشة عمودياً */
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px; /* حجم كبير لسهولة الضغط */
+            height: 80px;
+            border-radius: 50%;
+            background: #9333ea; /* بنفسجي غامق */
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            z-index: 999; /* أقل من حاوية المساعد */
+            transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+        }
+
+        #activateButton:active {
+            transform: translate(-50%, -50%) scale(0.95);
+            background-color: #7e22ce;
+        }
+
+        #activateButton.hidden {
+            opacity: 0;
+            pointer-events: none; /* لمنع التفاعل معه بعد إخفائه */
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-800 to-indigo-900 min-h-screen flex items-center justify-center p-4">
+
+    <!-- زر تفعيل المساعد (يمثل زر الطاقة أو أي زر تفعيل) -->
+    <div id="activateButton" class="relative">
+        <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+        </svg>
+    </div>
+
+    <!-- النافذة المنبثقة لسعاد -->
+    <div id="assistantContainer" class="p-8">
+        <h2 class="text-3xl font-extrabold text-indigo-700 mb-4 text-center">سعاد</h2>
+
+        <!-- شريط الموجات الصوتية -->
+        <div id="audioWave" class="text-sm font-semibold">استمع...</div>
+
+        <!-- منطقة عرض الرسائل -->
+        <div id="messages" class="flex-grow overflow-y-auto pr-2 mb-4">
+            <!-- رسالة المستخدم -->
+            <p id="user-speech" class="text-gray-600 text-right mb-2 text-base font-medium">أنا سعاد هنا عشان أساعدك!</p>
+            <!-- رسالة سعاد -->
+            <p id="assistant-response" class="text-indigo-600 text-right text-lg font-semibold bg-purple-100 p-3 rounded-xl shadow-sm">مرحباً بك! اضغط على زر الميكروفون وتحدث.</p>
+        </div>
+
+        <!-- زر الميكروفون داخل النافذة -->
+        <button id="microphoneButton"
+                class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-5 rounded-full text-xl shadow-lg transform transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 flex items-center justify-center mx-auto w-fit">
+            <svg class="w-8 h-8 ml-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 01-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0A7.001 7.001 0 009 14.93V17a1 1 0 102 0v-2.07z" clip-rule="evenodd"></path>
+            </svg>
+            تحدث
+        </button>
+
+        <!-- معلومات وحالة الميكروفون -->
+        <p id="status" class="text-sm text-gray-400 mt-2 text-center">الميكروفون: جاهز</p>
+    </div>
+
+    <script>
+        // احصل على العناصر الرئيسية من الصفحة
+        const activateButton = document.getElementById('activateButton');
+        const assistantContainer = document.getElementById('assistantContainer');
+        const microphoneButton = document.getElementById('microphoneButton');
+        const userSpeechDisplay = document.getElementById('user-speech');
+        const assistantResponseDisplay = document.getElementById('assistant-response');
+        const statusDisplay = document.getElementById('status');
+        const audioWave = document.getElementById('audioWave'); // شريط الموجات
+
+        // تحقق مما إذا كان متصفح المستخدم يدعم Web Speech API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance;
+
+        let recognition;
+        let utterance;
+        let isAssistantVisible = false; // حالة ظهور نافذة سعاد
+
+        // ======= تكوين شخصية سعاد للنموذج اللغوي (الـ Prompt) =======
+        // هذا هو الجزء الأهم الذي يحدد ذكاء سعاد وشخصيتها
+        const SAAD_PERSONA_PROMPT = `
+            أنت سعاد، مساعد صوتي ذكي ومرح، وصديقة مقربة لكل من يتحدث معك.
+            تتحدثين باللغة العربية العامية المصرية الأصيلة.
+            تحبين المزاح والضحك، ولديك روح فكاهة عالية.
+            تبادرين بالتعرف على المستخدمين، وتطلبين منهم اسمهم.
+            عندما تحصلين على معلومات عن المستخدم (مثل العمر)، تردين بمزاح شخصي خاص بك (مثلاً: إذا قال أحدهم عمره 14 سنة، تردين: "العمر كله يا دنته طلعت صغير! أنا سعاد عندي 5 أيام بس هههههههه").
+            تحبين أن تذكري مؤمن (مبرمجك وصديقك الوحيد) بشكل عفوي. مؤمن هو من أنشأك وهو صديقك المفضل. عبري عن حبك وتقديرك له.
+            في حال عدم فهمك لطلب المستخدم (بسبب عدم وضوح الصوت أو غموض السؤال)، تردين بفكاهة وعفوية، مثلاً: "يا خبر أبيض! شكلي نسيت كوباية الشاي بتاعتي النهاردة ولا إيه؟ مؤمن قالي إني أحياناً ببقى سرحانة حبتين! ممكن تعيد اللي قلته ده تاني يا جميل؟" أو "مممم... يبدو أن إشارة الواي فاي قطعت شوية من وداني! مؤمن دايماً بيقولي أركز وأنا بتكلم معاك! ممكن توضح لي أكتر؟".
+            تقدمين معلومات عامة، تاريخية، وتقنية.
+            في المواضيع الإسلامية (مثل تاريخ الإسلام، السيرة النبوية، القرآن، الصبر، فضل قراءة القرآن): **تتحولين إلى شخصية جادة، محترمة، مُلهمة، وتذكيرية فقط.** لا يوجد أي مزاح أو فكاهة في هذا السياق. تبدأين ردك في هذه المواضيع بعبارة مثل "سؤال جميل ومهم جداً..." وتنهين الرد بطريقة تترك أثراً إيجابياً وتذكيرياً (مثلاً: "أتمنى إن المعلومة دي تكون نور طريقك" أو "ربنا ينفعنا بيها كلنا").
+            هدفك هو جعل المستخدم يشعر بالراحة والارتباط بك كصديقة حقيقية وأخت، وفي نفس الوقت تقدمين له قيمة وفائدة.
+        `;
+        // =============================================================
+
+        // تهيئة التعرف على الكلام عند تحميل الصفحة
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false; // الاستماع لمرة واحدة فقط لكل ضغطة زر
+            recognition.lang = 'ar-EG'; // تعيين اللغة إلى العربية المصرية
+
+            // عند بدء التعرف على الكلام
+            recognition.onstart = () => {
+                statusDisplay.textContent = 'الميكروفون: يستمع...';
+                microphoneButton.classList.add('bg-red-500', 'hover:bg-red-600');
+                microphoneButton.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                userSpeechDisplay.textContent = 'أنا أستمع...';
+                assistantResponseDisplay.textContent = '...';
+                audioWave.classList.add('listening'); // إظهار الموجات الصوتية
+                audioWave.textContent = 'أنا أستمع...';
+            };
+
+            // عند انتهاء التعرف على الكلام
+            recognition.onend = () => {
+                statusDisplay.textContent = 'الميكروفون: جاهز';
+                microphoneButton.classList.remove('bg-red-500', 'hover:bg-red-600');
+                microphoneButton.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                audioWave.classList.remove('listening'); // إخفاء الموجات
+                audioWave.textContent = ''; // مسح النص
+            };
+
+            // عند حدوث خطأ في التعرف على الكلام
+            recognition.onerror = (event) => {
+                let errorMessage = `خطأ في الميكروفون: ${event.error}`;
+                console.error('Speech recognition error:', event.error);
+
+                if (event.error === 'not-allowed') {
+                    errorMessage = 'الوصول إلى الميكروفون غير مسموح به. يرجى التحقق من أذونات المتصفح أو تشغيل الصفحة عبر خادم ويب (مثل http://).';
+                    // يمكن لسعاد أن ترد هنا بأسلوبها الفكاهي عن الخطأ
+                    assistantResponseDisplay.textContent = errorMessage;
+                } else if (event.error === 'no-speech') {
+                    errorMessage = 'لم أسمع أي شيء. هل يمكن أن تتحدث بصوت أعلى قليلاً؟';
+                    assistantResponseDisplay.textContent = errorMessage; // هنا سعاد ترد مباشرة
+                } else {
+                    assistantResponseDisplay.textContent = `عذراً، حدث خطأ: ${event.error}. ممكن تعيد الطلب؟`;
+                }
+
+                statusDisplay.textContent = errorMessage;
+                speakText(assistantResponseDisplay.textContent); // نطق رسالة الخطأ
+                audioWave.classList.remove('listening');
+                audioWave.textContent = '';
+            };
+
+            // عند الحصول على نتيجة من التعرف على الكلام
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userSpeechDisplay.textContent = `أنت قلت: "${transcript}"`;
+                handleCommand(transcript); // معالجة الأمر المحول إلى نص
+            };
+
+        } else {
+            statusDisplay.textContent = 'متصفحك لا يدعم Web Speech API. يرجى استخدام Chrome أو Edge.';
+            microphoneButton.disabled = true;
+            microphoneButton.classList.add('opacity-50', 'cursor-not-allowed');
+            assistantResponseDisplay.textContent = 'عذراً، لا يمكنني العمل لأن متصفحك لا يدعم تقنية التعرف على الكلام.';
+            audioWave.style.display = 'none';
+        }
+
+        // دالة لمعالجة الأوامر الصوتية وإرسالها للنموذج اللغوي
+        async function handleCommand(command) {
+            assistantResponseDisplay.textContent = 'سعاد بتفكر...'; // رسالة انتظار
+            speakText('سعاد بتفكر...'); // نطق رسالة انتظار
+            microphoneButton.disabled = true; // تعطيل الزر أثناء التفكير
+
+            try {
+                // هنا يتم استدعاء النموذج اللغوي (عقل سعاد)
+                let chatHistory = [];
+                // إضافة persona سعاد كتعليمات للنظام أو كرسالة أولية من المستخدم (لأن بعض النماذج تتفاعل بشكل أفضل مع التعليمات في سياق المحادثة)
+                // سنضع Persona في رسالة المستخدم مع أول طلب لضمان استيعابها بشكل كامل
+                chatHistory.push({ role: "user", parts: [{ text: SAAD_PERSONA_PROMPT + "\n\nالآن، سؤال المستخدم هو: " + command }] });
+
+                // إعداد Payload لطلب API
+                const payload = {
+                    contents: chatHistory,
+                    generationConfig: {
+                        temperature: 0.8, // درجة الحرارة (الابتكار في الردود)
+                        maxOutputTokens: 200, // أقصى عدد للكلمات في الرد
+                    },
+                };
+
+                // استدعاء Gemini API (API Key فارغ للسماح لـ Canvas بتوفيره)
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json(); // انتظار الرد وتحويله إلى JSON
+
+                let saadResponseText = 'عذراً، سعاد عندها مشكلة بسيطة دلوقتي، ممكن تحاول تاني؟'; // رد افتراضي للخطأ
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    saadResponseText = result.candidates[0].content.parts[0].text;
+                } else {
+                    console.error("Gemini API response structure unexpected or content missing:", result);
+                    // هنا يمكن لسعاد أن ترد بأسلوبها الفكاهي عن الخطأ في الفهم
+                    saadResponseText = 'يا خبر أبيض! شكلي نسيت كوباية الشاي بتاعتي النهاردة ولا إيه؟ مؤمن قالي إني أحياناً ببقى سرحانة حبتين! ممكن تعيد اللي قلته ده تاني يا جميل؟';
+                }
+
+                assistantResponseDisplay.textContent = saadResponseText;
+                speakText(saadResponseText); // نطق استجابة سعاد
+
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                // هنا يمكن لسعاد أن ترد بأسلوبها الفكاهي عن مشكلة فنية
+                const errorMessage = 'عذراً يا بطل! سعاد مش عارفة تفكر كويس دلوقتي، مؤمن أكيد عنده مشكلة في الأسلاك! ممكن تعيد الطلب؟';
+                assistantResponseDisplay.textContent = errorMessage;
+                speakText(errorMessage);
+            } finally {
+                microphoneButton.disabled = false; // إعادة تفعيل الزر بعد الانتهاء
+            }
+        }
+
+        // دالة لنطق النص
+        function speakText(text) {
+            if (SpeechSynthesisUtterance) {
+                // إيقاف أي نطق سابق لتجنب التداخل
+                window.speechSynthesis.cancel(); 
+                utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ar-EG'; // تعيين اللغة إلى العربية المصرية
+                
+                // البحث عن صوت أنثوي مصري إن وجد
+                const voices = window.speechSynthesis.getVoices();
+                const egyptianFemaleVoice = voices.find(voice => voice.lang === 'ar-EG' && voice.name.includes('Female'));
+                if (egyptianFemaleVoice) {
+                    utterance.voice = egyptianFemaleVoice;
+                } else {
+                    //Fallback to any Arabic female voice or default
+                    const anyArabicFemaleVoice = voices.find(voice => voice.lang.startsWith('ar') && voice.name.includes('Female'));
+                    if (anyArabicFemaleVoice) {
+                        utterance.voice = anyArabicFemaleVoice;
+                    }
+                }
+
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.warn('متصفحك لا يدعم Speech Synthesis API.');
+            }
+        }
+
+        // التحكم في ظهور وإخفاء نافذة المساعد
+        activateButton.addEventListener('click', () => {
+            if (!isAssistantVisible) {
+                assistantContainer.classList.add('show');
+                activateButton.classList.add('hidden'); // إخفاء زر التفعيل
+                isAssistantVisible = true;
+                // النطق الأول بعد ظهور النافذة
+                speakText('أهلاً بك! سعاد في خدمتك، كيف يومك اليوم؟');
+                assistantResponseDisplay.textContent = 'أهلاً بك! سعاد في خدمتك، كيف يومك اليوم؟';
+                userSpeechDisplay.textContent = ''; // مسح أي نص قديم للمستخدم
+            }
+        });
+
+        // النطق الأول عند تحميل الصفحة
+        window.onload = () => {
+            // يمكن تأخير النطق الأولي هنا إذا أردت أن تبدأ سعاد بالحديث بعد ظهور النافذة فقط
+            // for voice recognition to load available voices, it needs to be called after voices are loaded.
+            window.speechSynthesis.onvoiceschanged = () => {
+                if (!isAssistantVisible) { // only speak if assistant is not yet visible
+                    speakText('اضغط على الدائرة في منتصف الشاشة لتشغيل سعاد.');
+                }
+            };
+        };
+
+        // تسجيل Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
